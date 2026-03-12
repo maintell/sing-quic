@@ -14,7 +14,7 @@ import (
 	"github.com/sagernet/quic-go"
 	"github.com/sagernet/quic-go/congestion"
 	"github.com/sagernet/quic-go/http3"
-	"github.com/sagernet/sing-quic"
+	qtls "github.com/sagernet/sing-quic"
 	congestion_meta1 "github.com/sagernet/sing-quic/congestion_meta1"
 	congestion_meta2 "github.com/sagernet/sing-quic/congestion_meta2"
 	"github.com/sagernet/sing-quic/hysteria"
@@ -39,6 +39,7 @@ type ServiceOptions struct {
 	ReceiveBPS            uint64
 	IgnoreClientBandwidth bool
 	SalamanderPassword    string
+	WebrtcPassword        string
 	TLSConfig             aTLS.ServerConfig
 	UDPDisabled           bool
 	UDPTimeout            time.Duration
@@ -59,6 +60,7 @@ type Service[U comparable] struct {
 	receiveBPS            uint64
 	ignoreClientBandwidth bool
 	salamanderPassword    string
+	webrtcPassword        string
 	tlsConfig             aTLS.ServerConfig
 	quicConfig            *quic.Config
 	userMap               map[string]U
@@ -96,6 +98,7 @@ func NewService[U comparable](options ServiceOptions) (*Service[U], error) {
 		receiveBPS:            options.ReceiveBPS,
 		ignoreClientBandwidth: options.IgnoreClientBandwidth,
 		salamanderPassword:    options.SalamanderPassword,
+		webrtcPassword:        options.WebrtcPassword,
 		tlsConfig:             options.TLSConfig,
 		quicConfig:            quicConfig,
 		userMap:               make(map[string]U),
@@ -115,7 +118,10 @@ func (s *Service[U]) UpdateUsers(userList []U, passwordList []string) {
 }
 
 func (s *Service[U]) Start(conn net.PacketConn) error {
-	if s.salamanderPassword != "" {
+	// Prefer WebRTC obfuscation when configured, otherwise use Salamander
+	if s.webrtcPassword != "" {
+		conn = NewWebrtcConn(conn, []byte(s.webrtcPassword))
+	} else if s.salamanderPassword != "" {
 		conn = NewSalamanderConn(conn, []byte(s.salamanderPassword))
 	}
 	err := qtls.ConfigureHTTP3(s.tlsConfig)

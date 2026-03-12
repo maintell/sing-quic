@@ -14,7 +14,7 @@ import (
 	"github.com/sagernet/quic-go"
 	"github.com/sagernet/quic-go/congestion"
 	"github.com/sagernet/quic-go/http3"
-	"github.com/sagernet/sing-quic"
+	qtls "github.com/sagernet/sing-quic"
 	congestion_meta1 "github.com/sagernet/sing-quic/congestion_meta1"
 	congestion_meta2 "github.com/sagernet/sing-quic/congestion_meta2"
 	"github.com/sagernet/sing-quic/hysteria"
@@ -43,6 +43,7 @@ type ClientOptions struct {
 	SendBPS            uint64
 	ReceiveBPS         uint64
 	SalamanderPassword string
+	WebrtcPassword     string
 	Password           string
 	TLSConfig          aTLS.Config
 	UDPDisabled        bool
@@ -59,6 +60,7 @@ type Client struct {
 	sendBPS            uint64
 	receiveBPS         uint64
 	salamanderPassword string
+	webrtcPassword     string
 	password           string
 	tlsConfig          aTLS.Config
 	quicConfig         *quic.Config
@@ -101,6 +103,7 @@ func NewClient(options ClientOptions) (*Client, error) {
 		sendBPS:            options.SendBPS,
 		receiveBPS:         options.ReceiveBPS,
 		salamanderPassword: options.SalamanderPassword,
+		webrtcPassword:     options.WebrtcPassword,
 		password:           options.Password,
 		tlsConfig:          options.TLSConfig,
 		quicConfig:         quicConfig,
@@ -125,12 +128,16 @@ func (c *Client) offer(ctx context.Context) (*clientQUICConnection, error) {
 func (c *Client) offerNew(ctx context.Context) (*clientQUICConnection, error) {
 	dialFunc := func(serverAddr M.Socksaddr) (net.PacketConn, error) {
 		udpConn, err := c.dialer.DialContext(c.ctx, "udp", serverAddr)
+		// Here you can use webrtcPassword if needed in the dial function
 		if err != nil {
 			return nil, err
 		}
 		var packetConn net.PacketConn
 		packetConn = bufio.NewUnbindPacketConn(udpConn)
-		if c.salamanderPassword != "" {
+		// Prefer WebRTC obfuscation when configured, fall back to salamander
+		if c.webrtcPassword != "" {
+			packetConn = NewWebrtcConn(packetConn, []byte(c.webrtcPassword))
+		} else if c.salamanderPassword != "" {
 			packetConn = NewSalamanderConn(packetConn, []byte(c.salamanderPassword))
 		}
 		return packetConn, nil
