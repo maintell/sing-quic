@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	qtls "github.com/maintell/sing-quic"
-	hyCC "github.com/maintell/sing-quic/hysteria/congestion"
 	"github.com/sagernet/quic-go"
+	"github.com/sagernet/sing-quic"
+	hyCC "github.com/sagernet/sing-quic/hysteria/congestion"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/auth"
 	"github.com/sagernet/sing/common/baderror"

@@ -1,4 +1,4 @@
-module github.com/maintell/sing-quic
+module github.com/sagernet/sing-quic
 
 go 1.23.0
 
